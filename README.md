@@ -1,13 +1,6 @@
 # Multiple Style Transfer
 This work is based on this paper [Multiple Style Transfer via Variational AutoEncoder
 ](https://arxiv.org/abs/2110.07375)
-     
-## For proposed ST-VAE model, we claim the following points:
-
-• First working on using Variational AutoEncoder for image style transfer.
-
-• Multiple style transfer by proposed VAE based Linear Transformation.
-
 
 ## Complete Architecture
 The complete architecture is shown as follows,
