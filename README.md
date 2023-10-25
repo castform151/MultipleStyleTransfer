@@ -15,7 +15,7 @@ The complete architecture is shown as follows,
 ![network](/figure/figure1.PNG)
 
 ## Set-up
-1. Download pre-trained models from [here] (https://drive.google.com/file/d/1WZrvjCGBO1mpggkdJiaw8jp-6ywbXn4J/view?usp=sharing) and copy them to the folder `models/`
+1. Download pre-trained models from [here](https://drive.google.com/file/d/1WZrvjCGBO1mpggkdJiaw8jp-6ywbXn4J/view?usp=sharing) and copy them to the folder `models/`
 
 2. Put your content images under `Test/content` and your style images under `Test/style`. Sample content and style images are available in `Test/extra_style` and `Test/extra_content` folders.
 
