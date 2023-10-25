@@ -29,8 +29,8 @@ opt = parser.parse_args()
 
 print(opt)
 
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
-
+# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 
 vgg = encoder4()
 dec = decoder4()
@@ -72,7 +72,7 @@ def eval():
                 prediction = prediction.data[0].cpu().permute(1, 2, 0)
 
             t1 = time.time()
-            #print("===> Processing: %s || Timer: %.4f sec." % (str(i), (t1 - t0)))
+            # print("===> Processing: %s || Timer: %.4f sec." % (str(i), (t1 - t0)))
 
             prediction = prediction * 255.0
             prediction = prediction.clamp(0, 255)

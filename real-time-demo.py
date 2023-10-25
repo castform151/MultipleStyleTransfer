@@ -22,7 +22,9 @@ opt = parser.parse_args()
 
 
 # Run the app
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
+
 
 vgg = encoder4()
 dec = decoder4()

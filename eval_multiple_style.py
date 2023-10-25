@@ -1,7 +1,10 @@
 from __future__ import print_function
 import argparse
-
+from importlib.util import set_loader
+import cv2
+import numpy
 import os
+from typing_extensions import Self
 import torch
 import torchvision.transforms as transforms
 import numpy as np
@@ -12,7 +15,8 @@ from os import listdir
 import os
 from libs.models import encoder4
 from libs.models import decoder4
-from libs.Matrix import MulLayer_4x
+from libs.Matrix import MulLayer_2x
+import image_hsv
 
 # Training settings
 parser = argparse.ArgumentParser(description='LT-VAE multiple style transfer')
@@ -24,14 +28,16 @@ parser.add_argument("--matrixPath", default='models/matrix_r41_new.pth', help='p
 
 opt = parser.parse_args()
 
-print(opt)
+print(opt._get_args)
 
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 
+content_img = cv2.imread("Test/content/camp2.jpg", 1)
 
 vgg = encoder4()
 dec = decoder4()
-matrix = MulLayer_4x(z_dim=opt.latent)
+matrix = MulLayer_2x(z_dim=opt.latent)
 vgg.load_state_dict(torch.load(opt.vgg_dir))
 dec.load_state_dict(torch.load(opt.decoder_dir))
 matrix.load_state_dict(torch.load(opt.matrixPath))
@@ -41,8 +47,8 @@ dec.to(device)
 matrix.to(device)
 
 
-def eval(a, b):
-
+def eval(k1,k2,k3):
+    global content_img
     matrix.eval()
     vgg.eval()
     dec.eval()
@@ -53,27 +59,41 @@ def eval(a, b):
 
     style_tf = test_transform(size=256, crop=True)
     ref_list = []
+    rn = []
+
     for ref_file in os.listdir(ref_path):
+        rn.append(ref_file)
         ref = Image.open(os.path.join(ref_path, ref_file)).convert('RGB')
+        ref_list.append(ref) 
 
-        ref_list.append(style_tf(ref).unsqueeze(0).to(device))
+    ref_list[0] = Image.open("Test/style/mona_lisa.jpeg").convert('RGB')
+    rn[0] = "freshcold"
+    ref_list[1] = Image.open("Test/style/picasso.jpg").convert('RGB')
+    rn[1] = "la_muse"
+    ref_list[2] = Image.open("Test/style/oversoul.jpg").convert('RGB')
+    rn[2] = "z"
 
+    # pix = numpy.asarray(ref_list[1])
+    # pic = image_hsv.image_hsv(pix,0, -50, -100)
+    # ref_list[1]= Image.fromarray(pic)
+    # pix = numpy.asarray(ref_list[0])
+    # pic = image_hsv.image_hsv(pix,0, -50, 100)
+    # pic = cv2.GaussianBlur(pix, (7,7),0)
+    # ref_list[0]= Image.fromarray(pic)
+
+    for i in range(3):
+        ref_list[i] = style_tf(ref_list[i]).unsqueeze(0).to(device)
     for cont_file in os.listdir(content_path):
         content = Image.open(os.path.join(content_path, cont_file)).convert('RGB')
         content = transform(content).unsqueeze(0).to(device)
-        aa = a/5.0
-        bb = b/5.0
-        k = (1-aa)*(1 - bb)
-        l = bb*(1-aa)
-        m = aa*(1-bb)
-        n = aa*bb
         with torch.no_grad():
-            prediction = chop_forward(k, l, m, n, content, ref_list)
+            prediction = chop_forward(k1, k2, k3, content, ref_list)
 
         prediction = prediction * 255.0
         prediction = prediction.clamp(0, 255)
-
-        name = os.path.join(output_path + '/ms_'+str(a)+'_'+str(b)+'.png')
+        content_img = numpy.asarray(prediction)
+        file_name = rn[0].split('.')[0]+str(k1)+rn[1].split('.')[0]+str(k2)+rn[2].split('.')[0]+str(k3)+'.png'
+        name = os.path.join(output_path, file_name)
         print(name)
         Image.fromarray(np.uint8(prediction)).save(name)
 
@@ -82,7 +102,7 @@ def eval(a, b):
 def test_transform(size, crop):
     transform_list = []
     if size != 0:
-        transform_list.append(transforms.Scale(size))
+        transform_list.append(transforms.Resize(size))
     if crop:
         transform_list.append(transforms.CenterCrop(size))
     transform_list.append(transforms.ToTensor())
@@ -97,25 +117,59 @@ transform = transforms.Compose([
 )
 
 
-def chop_forward(k, l, m, n, content, ref):
+def chop_forward(k1,k2,k3,content, ref):
 
     with torch.no_grad():
         sF_1 = vgg(ref[0])
         sF_2 = vgg(ref[1])
         sF_3 = vgg(ref[2])
-        sF_4 = vgg(ref[3])
         cF = vgg(content)
-        feature, _ = matrix(k, l, m, n, cF[opt.layer], sF_1[opt.layer], sF_2[opt.layer], sF_3[opt.layer], sF_4[opt.layer])
+        feature, _ = matrix(k1, k2, k3, cF['r41'], sF_1['r41'], sF_2['r41'], sF_3['r41'])
         transfer = dec(feature)
-
         transfer = transfer.data[0].cpu().permute(1, 2, 0)
 
     return transfer
 
 
+eval(0,0.5,0.5)
 
 
-##Eval Start!!!!
-for a in range(0, 5, 1):
-    for b in range(0, 5, 1):
-        eval(a, b)
+
+# style1_val = 1
+# style2_val = 0
+# style3_val = 0
+
+# def on_trackbar_style1(val):
+#     global style1_val
+#     global style2_val
+#     global style3_val
+#     style1_val = val/100
+#     if style1_val+style2_val > 1:
+#         style1_val = style1_val/(style1_val+style2_val)
+#         style2_val = style2_val/(style1_val+style2_val)
+#     style3_val = 1-style2_val-style1_val
+
+# def on_trackbar_style2(val):
+#     global style1_val
+#     global style2_val
+#     global style3_val
+#     style2_val = val/100
+#     if style1_val+style2_val > 1:
+#         style1_val = style1_val/(style1_val+style2_val)
+#         style2_val = style2_val/(style1_val+style2_val)
+#     style3_val = 1-style2_val-style1_val
+
+# # img = cv.imread("starrynight.png", 1)
+
+# cv2.namedWindow("Final Image")
+# cv2.createTrackbar("Style 1", "Final Image", 100, 100, on_trackbar_style1)
+# cv2.createTrackbar("Style 2", "Final Image", 0, 100, on_trackbar_style2)
+
+# while True:
+#     cv2.imshow("Final Image", content_img)
+#     if cv2.waitKey(1) == ord('s'):
+#         print("pressed s")
+#         eval(style1_val, style2_val, style3_val)
+#     if cv2.waitKey(1) == ord('q'):
+#         cv2.destroyAllWindows()
+#         break
